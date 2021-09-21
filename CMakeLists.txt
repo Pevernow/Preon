@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.8)
 if(NOT CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE Release)
 endif()
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 project(Preon)
 set(CMAKE_CXX_STANDARD 17)
@@ -17,9 +18,10 @@ configure_file(
 
 find_package(CURL REQUIRED)
 find_package(Threads REQUIRED)
+find_package(TIDY REQUIRED)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/quickjspp)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include ${CURL_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/deps/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include ${CURL_INCLUDE_DIRS} ${TIDY_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/deps/)
 
 file(GLOB_RECURSE PREON_SRC
 ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp 
@@ -34,6 +36,6 @@ file(GLOB_RECURSE TINYXML2_SRC
 ${CMAKE_CURRENT_SOURCE_DIR}/deps/tinyxml2/tinyxml2.cpp
 )
 
-link_libraries(${CURL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+link_libraries(${CURL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${TIDY_LIBRARIES})
 
 add_executable(${PROJECT_NAME} ${PREON_SRC} ${INIH_SRC} ${TINYXML2_SRC})

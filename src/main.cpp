@@ -1,6 +1,6 @@
 #include "CompileConfig.h"
 #include "cmdline.h"
-#include "backend/ResourceManager.h"
+#include "backend/Page.h"
 #include <iostream>
 
 int main(int argc, char **argv)
@@ -18,12 +18,7 @@ int main(int argc, char **argv)
 
     //std::string url = CliArg.get<std::string>("url");
     std::string url = "https://www.baidu.com/";
-    ResourceManager &resourceManager = ResourceManager::GetInstance();
-    resourceManager.GetResourceAsync(url, [](std::string url, std::vector<char> &data)
-                                     {
-                                         std::string str = std::string(&(data[0]), data.size());
-                                         std::cout << str.length() << std::endl;
-                                     });
+    Page test(url);
 
     return 0;
 }
