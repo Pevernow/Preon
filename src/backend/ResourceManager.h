@@ -13,6 +13,6 @@ public:
 private:
     ResourceManager();
     ~ResourceManager();
-    Network &m_net;
+    Network &m_Net;
     static ResourceManager m_Instance;
 };

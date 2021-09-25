@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GUILITE_CORE_INCLUDE_API_H
+#define GUILITE_CORE_INCLUDE_API_H
 
 #define REAL_TIME_TASK_CYCLE_MS		50
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -48,7 +49,7 @@ T_TIME second_to_day(long second);
 T_TIME get_time();
 
 void start_real_timer(void (*func)(void* arg));
-void register_timer(int milli_second, void func(void* param), void* param);
+void register_timer(int milli_second, void func(void* ptmr, void* parg));
 
 unsigned int get_cur_thread_id();
 void create_thread(unsigned long* thread_id, void* attr, void *(*start_routine) (void *), void* arg);
@@ -102,6 +103,129 @@ public:
 	int     m_right;
 	int     m_bottom;
 };
+#endif
+#ifndef GUILITE_CORE_INCLUDE_CMD_TARGET_H
+#define GUILITE_CORE_INCLUDE_CMD_TARGET_H
+#define MSG_TYPE_INVALID	0xFFFF
+#define MSG_TYPE_WND		0x0001
+#define MSG_TYPE_USR		0x0002
+#define USR_MSG_MAX			32
+class c_cmd_target;
+typedef void (c_cmd_target::*msgCallback)(int, int);
+struct GL_MSG_ENTRY
+{
+	unsigned int		msgType;
+	unsigned int		msgId;
+	c_cmd_target*		object;
+	msgCallback			callBack;
+};
+#define ON_GL_USER_MSG(msgId, func)                    	\
+{MSG_TYPE_USR, msgId, 0, msgCallback(&func)},
+#define GL_DECLARE_MESSAGE_MAP()						\
+protected:												\
+	virtual const GL_MSG_ENTRY* get_msg_entries() const;\
+private:                                                \
+	static const GL_MSG_ENTRY m_msg_entries[];
+#define GL_BEGIN_MESSAGE_MAP(theClass)					\
+const GL_MSG_ENTRY* theClass::get_msg_entries() const	\
+{														\
+	return theClass::m_msg_entries;						\
+}														\
+const GL_MSG_ENTRY theClass::m_msg_entries[] =     		\
+{
+#define GL_END_MESSAGE_MAP()                           	\
+{MSG_TYPE_INVALID, 0, 0, 0}};
+class c_cmd_target
+{
+public:
+	static int handle_usr_msg(int msg_id, int resource_id, int param)
+	{
+		int i;
+		c_cmd_target* p_wnd = 0;
+		for (i = 0; i < ms_user_map_size; i++)
+		{
+			if (msg_id == ms_usr_map_entries[i].msgId)
+			{
+				p_wnd = (c_cmd_target*)ms_usr_map_entries[i].object;
+				(p_wnd->*ms_usr_map_entries[i].callBack)(resource_id, param);
+			}
+		}
+		return 1;
+	}
+protected:
+	void load_cmd_msg()
+	{
+		const GL_MSG_ENTRY* p_entry = get_msg_entries();
+		if (0 == p_entry)
+		{
+			return;
+		}
+		bool bExist = false;
+		while (MSG_TYPE_INVALID != p_entry->msgType)
+		{
+			if (MSG_TYPE_WND == p_entry->msgType)
+			{
+				p_entry++;
+				continue;
+			}
+			bExist = false;
+			for (int i = 0; i < ms_user_map_size; i++)
+			{
+				//repeat register, return.
+				if (p_entry->msgId == ms_usr_map_entries[i].msgId
+					&& ms_usr_map_entries[i].object == this)
+				{
+					bExist = true;
+					break;
+				}
+			}
+			if (true == bExist)
+			{
+				p_entry++;
+				continue;
+			}
+			if (MSG_TYPE_USR == p_entry->msgType)
+			{
+				ms_usr_map_entries[ms_user_map_size] = *p_entry;
+				ms_usr_map_entries[ms_user_map_size].object = this;
+				ms_user_map_size++;
+				if (USR_MSG_MAX == ms_user_map_size)
+				{
+					ASSERT(false);
+				}
+			}
+			else
+			{
+				ASSERT(false);
+				break;
+			}
+			p_entry++;
+		}
+	}
+	const GL_MSG_ENTRY* find_msg_entry(const GL_MSG_ENTRY *pEntry, int msgType, int msgId)
+	{
+		if (MSG_TYPE_INVALID == msgType)
+		{
+			return 0;
+		}
+		while (MSG_TYPE_INVALID != pEntry->msgType)
+		{
+			if ((msgType == pEntry->msgType) && (msgId == pEntry->msgId))
+			{
+				return pEntry;
+			}
+			pEntry++;
+		}
+		return 0;
+	}
+private:
+	static GL_MSG_ENTRY ms_usr_map_entries[USR_MSG_MAX];
+	static unsigned short ms_user_map_size;
+	GL_DECLARE_MESSAGE_MAP()
+};
+#endif
+#ifndef  GUILITE_CORE_INCLUDE_RESOURCE_H
+#define  GUILITE_CORE_INCLUDE_RESOURCE_H
 //BITMAP
 typedef struct struct_bitmap_info
 {
@@ -123,6 +247,9 @@ typedef struct struct_font_info
 	unsigned int	count;
 	LATTICE*		lattice_array;
 } FONT_INFO;
+#endif
+#ifndef GUILITE_CORE_INCLUDE_THEME_H
+#define GUILITE_CORE_INCLUDE_THEME_H
 typedef struct struct_font_info		FONT_INFO;
 typedef struct struct_color_rect	COLOR_RECT;
 typedef struct struct_bitmap_info	BITMAP_INFO;
@@ -229,6 +356,9 @@ private:
 	static const BITMAP_INFO* s_bmp_map[BITMAP_MAX];
 	static unsigned int s_color_map[COLOR_MAX];
 };
+#endif
+#ifndef GUILITE_CORE_INCLUDE_DISPLAY_H
+#define GUILITE_CORE_INCLUDE_DISPLAY_H
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -815,6 +945,9 @@ inline int c_display::swipe_surface(c_surface* s0, c_surface* s1, int x0, int x1
 	m_phy_write_index++;
 	return 0;
 }
+#endif
+#ifndef GUILITE_CORE_INCLUDE_WORD_H
+#define GUILITE_CORE_INCLUDE_WORD_H
 #include <string.h>
 #include <stdio.h>
 #define BUFFER_LEN	16
@@ -1089,6 +1222,9 @@ private:
 		return utf8_bytes;
 	}
 };
+#endif
+#ifndef GUILITE_CORE_INCLUDE_BITMAP_H
+#define GUILITE_CORE_INCLUDE_BITMAP_H
 #define	DEFAULT_MASK_COLOR 0xFF080408
 class c_surface;
 class c_bitmap
@@ -1173,6 +1309,9 @@ public:
 		}
 	}
 };
+#endif
+#ifndef GUILITE_CORE_INCLUDE_WND_H
+#define GUILITE_CORE_INCLUDE_WND_H
 typedef struct struct_font_info		FONT_INFO;
 typedef struct struct_color_rect	COLOR_RECT;
 class c_wnd;
@@ -1212,9 +1351,9 @@ typedef struct struct_wnd_tree
 	short        			height;
 	struct struct_wnd_tree*	p_child_tree;//sub tree
 }WND_TREE;
-typedef void (c_wnd::*WND_CALLBACK)(int, int);
-class c_wnd
+class c_wnd : public c_cmd_target
 {
+	friend class c_dialog;
 public:
 	c_wnd() : m_status(STATUS_NORMAL), m_attr((WND_ATTRIBUTION)(ATTR_VISIBLE | ATTR_FOCUS)), m_parent(0), m_top_child(0), m_prev_sibling(0), m_next_sibling(0),
 		m_str(0), m_font_color(0), m_bg_color(0), m_id(0), m_z_order(Z_ORDER_LEVEL_0), m_focus_child(0), m_surface(0) {};
@@ -1253,6 +1392,7 @@ public:
 		}
 		if (load_child_wnd(p_child_tree) >= 0)
 		{
+			load_cmd_msg();
 			on_init_children();
 		}
 		return 0;
@@ -1431,6 +1571,19 @@ public:
 	}
 	c_wnd* get_prev_sibling() const { return m_prev_sibling; }
 	c_wnd* get_next_sibling() const { return m_next_sibling; }
+	void notify_parent(int msg_id, int param)
+	{
+		if (!m_parent)
+		{
+			return;
+		}
+		const GL_MSG_ENTRY* entry = m_parent->find_msg_entry(m_parent->get_msg_entries(), MSG_TYPE_WND, msg_id);
+		if (0 == entry)
+		{
+			return;
+		}
+		(m_parent->*(entry->callBack))(m_id, param);
+	}
 	virtual void on_touch(int x, int y, TOUCH_ACTION action)
 	{
 		x -= m_wnd_rect.m_left;
@@ -1602,7 +1755,6 @@ protected:
 	virtual void on_focus() {};
 	virtual void on_kill_focus() {};
 protected:
-	unsigned short	m_id;
 	WND_STATUS		m_status;
 	WND_ATTRIBUTION	m_attr;
 	c_rect			m_wnd_rect;		//position relative to parent window.
@@ -1610,18 +1762,42 @@ protected:
 	c_wnd*			m_top_child;	//the first sub window would be navigated
 	c_wnd*			m_prev_sibling;	//previous brother
 	c_wnd*			m_next_sibling;	//next brother
-	c_wnd*			m_focus_child;	//current focused window
 	const char*		m_str;			//caption
 	const FONT_INFO*	m_font_type;
 	unsigned int		m_font_color;
 	unsigned int		m_bg_color;
+	unsigned short		m_id;
 	int					m_z_order;		//the graphic level for rendering
+	c_wnd*				m_focus_child;	//current focused window
 	c_surface*			m_surface;
+private:
+	c_wnd(const c_wnd &win);
+	c_wnd& operator=(const c_wnd &win);
 };
-class c_button : public c_wnd
+#endif
+#ifndef GUILITE_CORE_INCLUDE_AUDIO_H
+#define GUILITE_CORE_INCLUDE_AUDIO_H
+enum AUDIO_TYPE
+{
+	AUDIO_HEART_BEAT,
+	AUDIO_ALARM,
+	AUDIO_MAX
+};
+class c_audio
 {
 public:
-	void set_on_click(WND_CALLBACK on_click) { this->on_click = on_click; }
+	static int play(AUDIO_TYPE type);
+private:
+	static void init();
+};
+#endif
+#ifndef GUILITE_WIDGETS_INCLUDE_BUTTON_H
+#define GUILITE_WIDGETS_INCLUDE_BUTTON_H
+#define GL_BN_CLICKED			0x1111
+#define ON_GL_BN_CLICKED(func) 	{MSG_TYPE_WND, GL_BN_CLICKED, 0, msgCallback(&func)},
+typedef struct struct_bitmap_info BITMAP_INFO;
+class c_button : public c_wnd
+{
 protected:
 	virtual void on_paint()
 	{
@@ -1668,7 +1844,6 @@ protected:
 	}
 	virtual void pre_create_wnd()
 	{
-		on_click = 0;
 		m_attr = (WND_ATTRIBUTION)(ATTR_VISIBLE | ATTR_FOCUS);
 		m_font_type = c_theme::get_font(FONT_DEFAULT);
 		m_font_color = c_theme::get_color(COLOR_WND_FONT);
@@ -1685,10 +1860,7 @@ protected:
 		{
 			m_status = STATUS_FOCUSED;
 			on_paint();
-			if(on_click)
-			{
-				(m_parent->*(on_click))(m_id, 0);
-			}
+			notify_parent(GL_BN_CLICKED, 0);
 		}
 	}
 	virtual void on_navigate(NAVIGATION_KEY key)
@@ -1705,8 +1877,10 @@ protected:
 		}
 		return c_wnd::on_navigate(key);
 	}
-	WND_CALLBACK on_click;
 };
+#endif
+#ifndef GUILITE_WIDGETS_INCLUDE_DIALOG_H
+#define GUILITE_WIDGETS_INCLUDE_DIALOG_H
 class c_surface;
 class c_dialog;
 typedef struct
@@ -1815,6 +1989,9 @@ private:
 	}
 	static DIALOG_ARRAY ms_the_dialogs[SURFACE_CNT_MAX];
 };
+#endif
+#ifndef GUILITE_WIDGETS_INCLUDE_KEYBOARD_H
+#define GUILITE_WIDGETS_INCLUDE_KEYBOARD_H
 #include <string.h>
 //Changing key width/height will change the width/height of keyboard
 #define KEY_WIDTH          65
@@ -1876,21 +2053,8 @@ public:
 		}
 		return -1;
 	}
-	virtual void on_init_children()
-	{
-		c_wnd* child = m_top_child;
-		if (0 != child)
-		{
-			while (child)
-			{
-				((c_button*)child)->set_on_click(WND_CALLBACK(&c_keyboard::on_key_clicked));
-				child = child->get_next_sibling();
-			}
-		}
-	}
 	KEYBOARD_STATUS get_cap_status(){return m_cap_status;}
 	char* get_str() { return m_str; }
-	void set_on_click(WND_CALLBACK on_click) { this->on_click = on_click; }
 protected:
 	virtual void pre_create_wnd()
 	{
@@ -1947,7 +2111,7 @@ protected:
 		ASSERT(false);
 	InputChar:
 		m_str[m_str_len++] = id;
-		(m_parent->*(on_click))(m_id, CLICK_CHAR);
+		notify_parent(KEYBORAD_CLICK, CLICK_CHAR);
 	}
 	void on_del_clicked(int id, int param)
 	{
@@ -1956,7 +2120,7 @@ protected:
 			return;
 		}
 		m_str[--m_str_len] = 0;
-		(m_parent->*(on_click))(m_id, CLICK_CHAR);
+		notify_parent(KEYBORAD_CLICK, CLICK_CHAR);
 	}
 	void on_caps_clicked(int id, int param)
 	{
@@ -1966,18 +2130,18 @@ protected:
 	void on_enter_clicked(int id, int param)
 	{
 		memset(m_str, 0, sizeof(m_str));
-		(m_parent->*(on_click))(m_id, CLICK_ENTER);
+		return notify_parent(KEYBORAD_CLICK, CLICK_ENTER);
 	}
 	void on_esc_clicked(int id, int param)
 	{
 		memset(m_str, 0, sizeof(m_str));
-		(m_parent->*(on_click))(m_id, CLICK_ESC);
+		notify_parent(KEYBORAD_CLICK, CLICK_ESC);
 	}
+	GL_DECLARE_MESSAGE_MAP()
 private:
 	char m_str[32];
 	int	 m_str_len;
 	KEYBOARD_STATUS m_cap_status;
-	WND_CALLBACK on_click;
 };
 class c_keyboard_button : public c_button
 {
@@ -2042,6 +2206,9 @@ protected:
 		c_word::draw_string_in_rect(m_surface, m_z_order, letter, rect, m_font_type, m_font_color, GL_ARGB(0, 0, 0, 0), m_attr);
 	}
 };
+#endif /* KEYBOARD_H_ */
+#ifndef GUILITE_WIDGETS_INCLUDE_EDIT_H
+#define GUILITE_WIDGETS_INCLUDE_EDIT_H
 #include <string.h>
 #define MAX_EDIT_STRLEN		32
 #define IDD_KEY_BOARD		0x1
@@ -2167,11 +2334,11 @@ protected:
 			break;
 		}
 	}
+	GL_DECLARE_MESSAGE_MAP()
 private:
 	void show_keyboard()
 	{
 		s_keyboard.connect(this, IDD_KEY_BOARD, m_kb_style);
-		s_keyboard.set_on_click(WND_CALLBACK(&c_edit::on_key_board_click));
 		s_keyboard.show_window();
 	}
 	void on_touch_down(int x, int y)
@@ -2227,18 +2394,20 @@ private:
 	char m_str_input[MAX_EDIT_STRLEN];
 	char m_str[MAX_EDIT_STRLEN];
 };
+#endif
+#ifndef GUILITE_WIDGETS_INCLUDE_LABEL_H
+#define GUILITE_WIDGETS_INCLUDE_LABEL_H
 class c_label : public c_wnd
 {
 public:
 	virtual void on_paint()
 	{
 		c_rect rect;
-		unsigned int bg_color = m_bg_color ? m_bg_color : m_parent->get_bg_color();
 		get_screen_rect(rect);
 		if (m_str)
 		{
-			m_surface->fill_rect(rect.m_left, rect.m_top, rect.m_right, rect.m_bottom, bg_color, m_z_order);
-			c_word::draw_string_in_rect(m_surface, m_z_order, m_str, rect, m_font_type, m_font_color, bg_color, ALIGN_LEFT | ALIGN_VCENTER);
+			m_surface->fill_rect(rect.m_left, rect.m_top, rect.m_right, rect.m_bottom, m_parent->get_bg_color(), m_z_order);
+			c_word::draw_string_in_rect(m_surface, m_z_order, m_str, rect, m_font_type, m_font_color, m_parent->get_bg_color(), ALIGN_LEFT | ALIGN_VCENTER);
 		}
 	}
 protected:
@@ -2249,14 +2418,17 @@ protected:
 		m_font_type = c_theme::get_font(FONT_DEFAULT);
 	}
 };
+#endif
+#ifndef GUILITE_WIDGETS_INCLUDE_LIST_BOX_H
+#define GUILITE_WIDGETS_INCLUDE_LIST_BOX_H
 #include <string.h>
 #define MAX_ITEM_NUM			4
+#define GL_LIST_CONFIRM			0x1
 #define ITEM_HEIGHT				45
+#define ON_LIST_CONFIRM(func)	{MSG_TYPE_WND, GL_LIST_CONFIRM, 0, msgCallback(&func)},
 class c_list_box : public c_wnd
 {
 public:
-	void set_on_change(WND_CALLBACK on_change) { this->on_change = on_change; }
-	short get_item_count() { return m_item_total; }
 	int add_item(char* str)
 	{
 		if (m_item_total >= MAX_ITEM_NUM)
@@ -2274,6 +2446,7 @@ public:
 		memset(m_item_array, 0, sizeof(m_item_array));
 		update_list_size();
 	}
+	short get_item_count() { return m_item_total; }
 	void  select_item(short index)
 	{
 		if (index < 0 || index >= m_item_total)
@@ -2428,10 +2601,7 @@ private:
 			{
 				m_status = STATUS_FOCUSED;
 				on_paint();
-				if(on_change)
-				{
-					(m_parent->*(on_change))(m_id, m_selected_item);
-				}
+				notify_parent(GL_LIST_CONFIRM, m_selected_item);
 			}
 		}
 	}
@@ -2454,10 +2624,7 @@ private:
 				m_status = STATUS_FOCUSED;
 				select_item((y - m_list_wnd_rect.m_top) / ITEM_HEIGHT);
 				on_paint();
-				if(on_change)
-				{
-					(m_parent->*(on_change))(m_id, m_selected_item);
-				}
+				notify_parent(GL_LIST_CONFIRM, m_selected_item);
 			}
 			else
 			{
@@ -2470,8 +2637,10 @@ private:
 	char*			m_item_array[MAX_ITEM_NUM];
 	c_rect			m_list_wnd_rect;	//rect relative to parent wnd.
 	c_rect			m_list_screen_rect;	//rect relative to physical screen(frame buffer)
-	WND_CALLBACK 	on_change;
 };
+#endif
+#ifndef GUILITE_WIDGETS_INCLUDE_SLIDE_GROUP_H
+#define GUILITE_WIDGETS_INCLUDE_SLIDE_GROUP_H
 #include <stdlib.h>
 #define MAX_PAGES	5
 class c_gesture;
@@ -2807,8 +2976,13 @@ inline void c_slide_group::on_touch(int x, int y, TOUCH_ACTION action)
 		}
 	}
 }
+#endif
+#ifndef GUILITE_WIDGETS_INCLUDE_SPINBOX_H
+#define GUILITE_WIDGETS_INCLUDE_SPINBOX_H
 #define ID_BT_ARROW_UP      	0x1111
 #define ID_BT_ARROW_DOWN    	0x2222
+#define	GL_SPIN_CHANGE			0x3333
+#define ON_SPIN_CHANGE(func)	{MSG_TYPE_WND, GL_SPIN_CHANGE, 0, msgCallback(&func)},
 class c_spin_box;
 class c_spin_button : public c_button
 {
@@ -2829,7 +3003,6 @@ public:
 	short get_step() { return m_step; }
 	void set_value_digit(short digit) { m_digit = digit; }
 	short get_value_digit() { return m_digit; }
-	void set_on_change(WND_CALLBACK on_change) { this->on_change = on_change; }
 protected:
 	virtual void on_paint()
 	{
@@ -2862,10 +3035,7 @@ protected:
 			return;
 		}
 		m_cur_value += m_step;
-		if(on_change)
-		{
-			(m_parent->*(on_change))(m_id, m_cur_value);
-		}
+		notify_parent(GL_SPIN_CHANGE, m_cur_value);
 		on_paint();
 	}
 	void on_arrow_down_bt_click()
@@ -2875,10 +3045,7 @@ protected:
 			return;
 		}
 		m_cur_value -= m_step;
-		if(on_change)
-		{
-			(m_parent->*(on_change))(m_id, m_cur_value);
-		}
+		notify_parent(GL_SPIN_CHANGE, m_cur_value);
 		on_paint();
 	}
 	short			m_cur_value;
@@ -2889,7 +3056,6 @@ protected:
 	short			m_digit;
 	c_spin_button  	m_bt_up;
 	c_spin_button  	m_bt_down;
-	WND_CALLBACK 	on_change;
 };
 inline void c_spin_button::on_touch(int x, int y, TOUCH_ACTION action)
 {
@@ -2899,6 +3065,9 @@ inline void c_spin_button::on_touch(int x, int y, TOUCH_ACTION action)
 	}
 	c_button::on_touch(x, y, action);
 }
+#endif
+#ifndef GUILITE_WIDGETS_INCLUDE_TABLE_H
+#define GUILITE_WIDGETS_INCLUDE_TABLE_H
 #define  MAX_COL_NUM  30
 #define  MAX_ROW_NUM  30
 class c_table: public c_wnd
@@ -2997,6 +3166,9 @@ protected:
 	unsigned int m_row_height[MAX_ROW_NUM];
 	unsigned int m_col_width[MAX_COL_NUM];
 };
+#endif
+#ifndef GUILITE_WIDGETS_INCLUDE_WAVE_BUFFER_H
+#define GUILITE_WIDGETS_INCLUDE_WAVE_BUFFER_H
 #include <string.h>
 #include <stdio.h>
 #define WAVE_BUFFER_LEN	1024
@@ -3104,6 +3276,9 @@ private:
 	short	m_read_cache_sum;
 	unsigned int m_refresh_sequence;
 };
+#endif
+#ifndef GUILITE_WIDGETS_INCLUDE_WAVE_CTRL_H
+#define GUILITE_WIDGETS_INCLUDE_WAVE_CTRL_H
 #include <stdlib.h>
 #include <string.h>
 #define CORRECT(x, high_limit, low_limit)	{\
@@ -3346,6 +3521,13 @@ private:
 	unsigned char 	m_frame_len_map[64];
 	unsigned char 	m_frame_len_map_index;
 };
+#endif
+#ifdef GUILITE_ON
+GL_MSG_ENTRY c_cmd_target::ms_usr_map_entries[USR_MSG_MAX];
+unsigned short c_cmd_target::ms_user_map_size;
+GL_BEGIN_MESSAGE_MAP(c_cmd_target)
+GL_END_MESSAGE_MAP()
+#endif
 
 #ifdef GUILITE_ON
 
@@ -3410,8 +3592,7 @@ typedef struct _timer_manage
         int state; /* on or off */
         int interval;
         int elapse; /* 0~interval */
-        void (* timer_proc) (void* param);
-		void* param;
+        void (* timer_proc) (void* ptmr, void* parg);
     }timer_info[MAX_TIMER_CNT];
     void (* old_sigfunc)(int);
     void (* new_sigfunc)(int);
@@ -3432,7 +3613,7 @@ static void* timer_routine(void*)
 			if(timer_manage.timer_info[i].elapse == timer_manage.timer_info[i].interval)
 			{
 				timer_manage.timer_info[i].elapse = 0;
-				timer_manage.timer_info[i].timer_proc(timer_manage.timer_info[i].param);
+				timer_manage.timer_info[i].timer_proc(0, 0);
 			}
 		}
     	usleep(1000 * TIMER_UNIT);
@@ -3452,7 +3633,7 @@ static int init_mul_timer()
     s_is_init = true;
     return 1;
 }
-static int set_a_timer(int interval, void (* timer_proc)(void* param), void* param)
+static int set_a_timer(int interval, void (* timer_proc) (void* ptmr, void* parg))
 {
 	init_mul_timer();
 	int i;
@@ -3468,7 +3649,6 @@ static int set_a_timer(int interval, void (* timer_proc)(void* param), void* par
         }
         memset(&timer_manage.timer_info[i], 0, sizeof(timer_manage.timer_info[i]));
         timer_manage.timer_info[i].timer_proc = timer_proc;
-		timer_manage.timer_info[i].param = param;
         timer_manage.timer_info[i].interval = interval;
         timer_manage.timer_info[i].elapse = 0;
         timer_manage.timer_info[i].state = 1;
@@ -3532,9 +3712,9 @@ unsigned int get_cur_thread_id()
 {
 	return (unsigned long)pthread_self();
 }
-void register_timer(int milli_second,void func(void* param), void* param)
+void register_timer(int milli_second,void func(void* ptmr, void* parg))
 {
-	set_a_timer(milli_second/TIMER_UNIT,func, param);
+	set_a_timer(milli_second/TIMER_UNIT,func);
 }
 long get_time_in_second()
 {
@@ -3893,8 +4073,7 @@ typedef struct _timer_manage
         int state; /* on or off */
         int interval;
         int elapse; /* 0~interval */
-        void (* timer_proc) (void* param);
-		void* param;
+        void (* timer_proc) (void* ptmr, void* parg);
     }timer_info[MAX_TIMER_CNT];
     void (* old_sigfunc)(int);
     void (* new_sigfunc)(int);
@@ -3915,7 +4094,7 @@ DWORD WINAPI timer_routine(LPVOID lpParam)
 			if(timer_manage.timer_info[i].elapse == timer_manage.timer_info[i].interval)
 			{
 				timer_manage.timer_info[i].elapse = 0;
-				timer_manage.timer_info[i].timer_proc(timer_manage.timer_info[i].param);
+				timer_manage.timer_info[i].timer_proc(0, 0);
 			}
 		}
 		Sleep(TIMER_UNIT);
@@ -3935,7 +4114,7 @@ static int init_mul_timer()
     s_is_init = true;
     return 1;
 }
-static int set_a_timer(int interval, void (* timer_proc) (void* param), void* param)
+static int set_a_timer(int interval, void (* timer_proc) (void* ptmr, void* parg))
 {
 	init_mul_timer();
 	int i;
@@ -3951,7 +4130,6 @@ static int set_a_timer(int interval, void (* timer_proc) (void* param), void* pa
         }
         memset(&timer_manage.timer_info[i], 0, sizeof(timer_manage.timer_info[i]));
         timer_manage.timer_info[i].timer_proc = timer_proc;
-		timer_manage.timer_info[i].param = param;
         timer_manage.timer_info[i].interval = interval;
         timer_manage.timer_info[i].elapse = 0;
         timer_manage.timer_info[i].state = 1;
@@ -4019,9 +4197,9 @@ unsigned int get_cur_thread_id()
 {
 	return GetCurrentThreadId();
 }
-void register_timer(int milli_second,void func(void* param), void* param)
+void register_timer(int milli_second,void func(void* ptmr, void* parg))
 {
-	set_a_timer(milli_second/TIMER_UNIT,func, param);
+	set_a_timer(milli_second/TIMER_UNIT,func);
 }
 long get_time_in_second()
 {
@@ -4194,10 +4372,281 @@ int c_fifo::write(void* buf, int len)
 #endif
 #endif
 #ifdef GUILITE_ON
+#if (defined __linux__) || (defined __APPLE__)
+#include <unistd.h>
+#include <sys/types.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <stdio.h>
+typedef void(*ANDROID_PLAY_WAV)(const char* fileName);
+ANDROID_PLAY_WAV gAndroidPlayWav;
+typedef struct
+{
+	AUDIO_TYPE type;
+}AUDIO_REQUEST;
+static c_fifo s_request_fifo;
+static void* render_thread(void* param)
+{
+	while (true)
+	{
+		AUDIO_REQUEST request;
+		s_request_fifo.read(&request, sizeof(request));
+		
+		if (AUDIO_MAX <= request.type)
+		{
+			continue;
+		}
+		if(gAndroidPlayWav)
+		{
+			gAndroidPlayWav("heart_beat.wav");
+		}
+	}
+}
+void c_audio::init()
+{
+	static bool s_flag = false;
+	if (s_flag)
+	{
+		return;
+	}
+	unsigned long pid;
+	create_thread(&pid, 0, render_thread, 0);
+	s_flag = true;
+}
+int c_audio::play(AUDIO_TYPE type)
+{
+	if (AUDIO_MAX <= type)
+	{
+		return -1;
+	}
+	init();
+	AUDIO_REQUEST request;
+	request.type = type;
+	s_request_fifo.write(&request, sizeof(request));
+	return 0;
+}
+#endif
+#endif
+#ifdef GUILITE_ON
+#if (defined _WIN32) || (defined WIN32) || (defined _WIN64) || (defined WIN64)
+#include <windows.h>
+#include <Audioclient.h>
+#include <mmdeviceapi.h>
+#ifndef AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM
+	#define AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM 0x80000000
+#endif
+#define AUDIO_CHANNELS_MONO     1
+#define AUDIO_SAMPLE_RATE       44000
+#define AUDIO_BITS              16
+#define AUDIO_BLOCK_ALIGN       (AUDIO_CHANNELS_MONO * (AUDIO_BITS >> 3))
+#define AUDIO_BYTE_RATE         (AUDIO_SAMPLE_RATE * AUDIO_BLOCK_ALIGN)
+#define AUDIO_OUTPUT_BUF_LEN	(10000000 * 5)	//5 seconds long.
+#define CHECK_ERROR(ret) if(ret != 0){ASSERT(false);}
+typedef struct
+{
+	AUDIO_TYPE type;
+}AUDIO_REQUEST;
+typedef struct
+{
+	BYTE* p_data;
+	int size;
+}WAV_RESOURCE;
+static WAV_RESOURCE s_wav_resource[AUDIO_MAX];
+static c_fifo s_request_fifo;
+static IAudioClient* s_audio_client;
+static IAudioRenderClient* s_audio_render_client;
+static HANDLE s_audio_event;
+//Should be call by UWP, and UWP create audio client.
+void set_audio_client(IAudioClient* audio_client)
+{
+	s_audio_client = audio_client;
+}
+static WAVEFORMATEX s_wav_format = {
+	WAVE_FORMAT_PCM,
+	AUDIO_CHANNELS_MONO,
+	AUDIO_SAMPLE_RATE,
+	AUDIO_BYTE_RATE,
+	AUDIO_BLOCK_ALIGN,
+	AUDIO_BITS,
+	0
+};
+static int register_wav_resouce(AUDIO_TYPE type, const wchar_t* wav_path)
+{
+	if (s_wav_resource[type].p_data)
+	{
+		return 0;
+	}
+  
+	void* hFile = CreateFile((LPCSTR)wav_path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+	if (INVALID_HANDLE_VALUE == hFile)
+	{
+		log_out("Open wave file failed\n");
+		return -1;
+	}
+	LARGE_INTEGER ret;
+	GetFileSizeEx(hFile, &ret);
+	int size = ret.LowPart;
+	if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, 0x2C, 0, FILE_BEGIN))
+	{
+		ASSERT(false);
+		return -2;
+	}
+	size -= 0x2C;
+	BYTE* p_data = (BYTE*)malloc(size);
+	DWORD read_num;
+	ReadFile(hFile, p_data, size, &read_num, 0);
+	s_wav_resource[type].p_data = p_data;
+	s_wav_resource[type].size = size;
+	return 0;
+}
+static int load_wav_chunk(BYTE* p_des, int des_size, BYTE* p_src, int src_size)
+{
+	if (des_size <= 0 || src_size <= 0)
+	{
+		return -1;
+	}
+	int write_size = (src_size > des_size) ? des_size : src_size;
+	memcpy(p_des, p_src, write_size);
+	memset(p_des + write_size, 0, (des_size - write_size));
+	return write_size;
+}
+static int play_wav(BYTE* p_data, int size)
+{
+	if (0 == p_data || 0 >= size)
+	{
+		return -1;
+	}
+	UINT32 bufferFrameCount;
+	UINT32 numFramesAvailable;
+	UINT32 numFramesPadding;
+	BYTE* p_buffer = 0;
+	int ret = s_audio_client->GetBufferSize(&bufferFrameCount);
+	CHECK_ERROR(ret);
+	
+	int offset = 0;
+	while (WaitForSingleObject(s_audio_event, INFINITE) == WAIT_OBJECT_0)
+	{
+		ret = s_audio_client->GetCurrentPadding(&numFramesPadding);
+		CHECK_ERROR(ret);
+		numFramesAvailable = bufferFrameCount - numFramesPadding;
+		if (numFramesAvailable < 1600)
+		{
+			Sleep(10);
+			continue;
+		}
+		ret = s_audio_render_client->GetBuffer(numFramesAvailable, &p_buffer);
+		CHECK_ERROR(ret);
+		ret = load_wav_chunk(p_buffer, numFramesAvailable * s_wav_format.nBlockAlign, p_data + offset, (size - offset));
+		if (ret > 0)
+		{
+			s_audio_render_client->ReleaseBuffer((ret / s_wav_format.nBlockAlign), 0);
+			offset += ret;
+		}
+		else
+		{
+			s_audio_render_client->ReleaseBuffer(0, AUDCLNT_BUFFERFLAGS_SILENT);
+			break;
+		}
+	}	
+	return 0;
+}
+static void* render_thread(void* param)
+{
+	s_audio_client->Start();
+	while (true)
+	{
+		AUDIO_REQUEST request;
+		s_request_fifo.read(&request, sizeof(request));
+		
+		if (AUDIO_MAX <= request.type)
+		{
+			ASSERT(false);
+			continue;
+		}
+		play_wav(s_wav_resource[request.type].p_data, s_wav_resource[request.type].size);
+	}
+	s_audio_client->Stop();
+}
+static int init_audio_client()
+{
+	if (s_audio_client)
+	{
+		return 0;
+	}
+	//For desktop only, could not pass Windows Store certification.
+	/*
+	int ret = CoInitializeEx(0, COINIT_MULTITHREADED);
+	CHECK_ERROR(ret);
+	IMMDeviceEnumerator *pEnumerator = nullptr;
+	ret = CoCreateInstance(__uuidof(MMDeviceEnumerator), 0,
+	CLSCTX_ALL, __uuidof(IMMDeviceEnumerator),
+	(void**)&pEnumerator);
+	CHECK_ERROR(ret);
+	IMMDevice* audio_output_device;
+	pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &audio_output_device);
+	if (0 == audio_output_device)
+	{
+	ASSERT(false);
+	}
+	ret = audio_output_device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, 0, (void**)&s_audio_client);
+	CHECK_ERROR(ret);
+	return 0;
+	*/
+	return -1;
+}
+void c_audio::init()
+{
+	static bool s_flag = false;
+	if (s_flag)
+	{
+		return;
+	}
+	register_wav_resouce(AUDIO_HEART_BEAT, L"heart_beat.wav");
+	
+	if (0 > init_audio_client())
+	{
+		return;
+	}
+	int ret = s_audio_client->Initialize(AUDCLNT_SHAREMODE_SHARED,
+									AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
+									AUDIO_OUTPUT_BUF_LEN * 2, 0, &s_wav_format,	0);
+	CHECK_ERROR(ret);
+	//s_audio_event = CreateEventEx(0, 0, 0, EVENT_ALL_ACCESS);
+	s_audio_event = CreateEvent(0, 0, 0, 0);
+	ret = s_audio_client->SetEventHandle(s_audio_event);
+	CHECK_ERROR(ret);
+	ret = s_audio_client->GetService(__uuidof(IAudioRenderClient), (void**)&s_audio_render_client);
+	CHECK_ERROR(ret);
+	unsigned long pid;
+	create_thread(&pid, 0, render_thread, 0);
+	s_flag = true;
+}
+int c_audio::play(AUDIO_TYPE type)
+{
+	if (AUDIO_MAX <= type)
+	{
+		return -1;
+	}
+	init();
+	if (!s_audio_client || !s_audio_render_client)
+	{
+		return -2;
+	}
+	AUDIO_REQUEST request;
+	request.type = type;
+	s_request_fifo.write(&request, sizeof(request));
+	return 0;
+}
+#endif
+#endif
+#ifdef GUILITE_ON
 DIALOG_ARRAY c_dialog::ms_the_dialogs[SURFACE_CNT_MAX];
 #endif
 #ifdef GUILITE_ON
 c_keyboard  c_edit::s_keyboard;
+GL_BEGIN_MESSAGE_MAP(c_edit)
+ON_KEYBORAD_UPDATE(c_edit::on_key_board_click)
+GL_END_MESSAGE_MAP()
 #endif
 #ifdef GUILITE_ON
 static c_keyboard_button s_key_0, s_key_1, s_key_2, s_key_3, s_key_4, s_key_5, s_key_6, s_key_7, s_key_8, s_key_9;
@@ -4265,4 +4714,7 @@ WND_TREE g_number_board_children[] =
 	{&s_key_enter,'\n',	0, POS_X(3), POS_Y(2), KEY_WIDTH, KEY_HEIGHT * 2 + 2},
 	{0,0,0,0,0,0,0}
 };
+GL_BEGIN_MESSAGE_MAP(c_keyboard)
+ON_GL_BN_CLICKED(c_keyboard::on_key_clicked)
+GL_END_MESSAGE_MAP()
 #endif

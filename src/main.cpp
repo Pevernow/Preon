@@ -1,6 +1,6 @@
 #include "CompileConfig.h"
 #include "cmdline.h"
-#include "backend/Page.h"
+#include "Browser.h"
 #include <iostream>
 
 int main(int argc, char **argv)
@@ -18,7 +18,8 @@ int main(int argc, char **argv)
 
     //std::string url = CliArg.get<std::string>("url");
     std::string url = "https://www.baidu.com/";
-    Page test(url);
+    Browser test;
+    test.OpenNewTab(url);
 
     return 0;
 }

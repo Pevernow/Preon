@@ -4,7 +4,7 @@
 
 ResourceManager ResourceManager::m_Instance;
 
-ResourceManager::ResourceManager() : m_net(Network::GetInstance()) {}
+ResourceManager::ResourceManager() : m_Net(Network::GetInstance()) {}
 
 ResourceManager::~ResourceManager() {}
 
@@ -17,7 +17,7 @@ void ResourceManager::GetResourceAsync(std::string url, std::function<void(std::
 {
     std::async(std::launch::async, [&]()
                {
-                   m_net.DownLoadFromURLAsync(url, [&](std::string url, std::vector<char> &data, CURLcode retcode)
+                   m_Net.DownLoadFromURLAsync(url, [&](std::string url, std::vector<char> &data, CURLcode retcode)
                                               {
                                                   if (retcode == CURLcode::CURLE_OK)
                                                   {
