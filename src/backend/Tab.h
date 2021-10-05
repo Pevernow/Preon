@@ -3,20 +3,23 @@
 #include <vector>
 #include <string>
 
+#include <functional>
+
 class Tab
 {
 public:
     Tab();
     Tab(std::string url);
     Tab(Tab &&);
-    void Load(std::string url);
+    void Load(std::string url, std::function<void(Tab *)>);
     bool Initialized();
+    tinyxml2::XMLDocument m_Dom;
 
 private:
     bool
     LoadDoc(std::vector<char> &htmlDoc);
     bool ConvertHtmlToXhtml(const std::vector<char> &inHtml, std::vector<char> &outXhtml);
     bool LoadXhtmlToDom(const std::vector<char> &xhtml);
-    tinyxml2::XMLDocument m_Dom;
+
     bool m_Initialized;
 };

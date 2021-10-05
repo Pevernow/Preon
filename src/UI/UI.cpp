@@ -3,6 +3,10 @@
 #include "GuiLite/GuiLite.h"
 #include "CompileConfig.h"
 #include <SDL2/SDL_syswm.h>
+#include <string>
+#include "freetype_operator.h"
+#include <locale>
+#include <codecvt>
 
 c_surface *g_GuiLiteSurface;
 c_display *g_GuiLiteDisplay;
@@ -10,6 +14,12 @@ c_display *g_GuiLiteDisplay;
 UI UI::m_Instance;
 
 const uint8_t COLOR_BYTES = 4; //equals to 32bits
+
+const char *TTF_FILE_PATH = "msyh.ttf";
+
+static c_freetype_font_op the_freetype_font_op;
+
+static std::wstring_convert<std::codecvt_utf8<wchar_t>> gConverter;
 
 UI::UI(uint16_t screenWidth, uint16_t screenHeight)
 {
@@ -52,11 +62,15 @@ UI::UI(uint16_t screenWidth, uint16_t screenHeight)
     }
     //设置Renderer画笔颜色，透明度(此时透明度不会生效，因为没有设置BlendMode)
     SDL_SetRenderDrawColor(m_SdlRenderer, 0, 255, 0, 255);
-    m_FrameBuffer = new uint32_t[screenWidth * screenHeight * COLOR_BYTES];
+    m_FrameBuffer = new char[screenWidth * screenHeight * COLOR_BYTES];
+    memset(m_FrameBuffer, 0, screenWidth * screenHeight * COLOR_BYTES);
     g_GuiLiteSurface = new c_surface(screenWidth, screenHeight, COLOR_BYTES);
     g_GuiLiteDisplay = new c_display(m_FrameBuffer, screenWidth, screenHeight, g_GuiLiteSurface);
-    SDL_CreateTexture(m_SdlRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, screenWidth, screenHeight);
-    SDL_LockTexture(m_SdlDisplay, NULL, &m_FrameBuffer, 0);
+    m_SdlDisplay = SDL_CreateTexture(m_SdlRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, screenWidth, screenHeight);
+
+    the_freetype_font_op.Init();
+    c_word::fontOperator = &the_freetype_font_op;
+    c_theme::add_font(FONT_DEFAULT, the_freetype_font_op.set_font(TTF_FILE_PATH, 32, 32));
 }
 
 UI::~UI()
@@ -68,6 +82,42 @@ UI::~UI()
     delete g_GuiLiteSurface;
     delete[] m_FrameBuffer;
     SDL_Quit();
+}
+
+void UI::ProcessDom(tinyxml2::XMLDocument *dom)
+{
+    ProcessDomElement(dom->RootElement());
+}
+
+void UI::ProcessDomElement(tinyxml2::XMLElement *element)
+{
+    int i = 0;
+    for (tinyxml2::XMLElement *nodeEle = element->FirstChildElement(); nodeEle; nodeEle = nodeEle->NextSiblingElement())
+    {
+        if (nodeEle->Value() != NULL)
+        {
+            std::string tagName = std::string(nodeEle->Value());
+            if (tagName == "span")
+            {
+                if (nodeEle->GetText() != NULL)
+                {
+                    c_label *label = new c_label;
+                    label->set_surface(g_GuiLiteSurface);
+                    label->set_bg_color(888888);
+                    label->set_font_type((LATTICE_FONT_INFO *)c_theme::get_font(FONT_DEFAULT));
+                    const wchar_t *wstr = gConverter.from_bytes(nodeEle->GetText()).c_str();
+                    label->connect(NULL, i, (const char *)((void *)wstr), 0, i * 50, 100, 100);
+                    label->show_window();
+                    nodeEle->SetUserData((void *)label);
+                    i += 1;
+                }
+            }
+        }
+        if (!nodeEle->NoChildren())
+        {
+            ProcessDomElement(nodeEle);
+        }
+    }
 }
 
 void UI::MainLoop()
@@ -89,6 +139,7 @@ void UI::ProcessEvent()
         case SDL_QUIT:
         {
             SDL_Quit();
+            exit(0);
             break;
         }
         default:
@@ -100,6 +151,7 @@ void UI::ProcessEvent()
 void UI::DrawFrameBuffer()
 {
     SDL_RenderClear(m_SdlRenderer);
+    SDL_UpdateTexture(m_SdlDisplay, NULL, m_FrameBuffer, 800 * 4);
     SDL_Rect textureRect;
     textureRect.x = 0;
     textureRect.y = 0;

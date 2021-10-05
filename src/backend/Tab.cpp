@@ -3,9 +3,11 @@
 #include <tidy.h>
 #include <tidybuffio.h>
 
+#include <iostream>
+
 Tab::Tab(std::string url) : m_Initialized(false)
 {
-    Load(url);
+    ;
 }
 
 bool Tab::ConvertHtmlToXhtml(const std::vector<char> &inHtml, std::vector<char> &outXhtml)
@@ -93,11 +95,17 @@ bool Tab::LoadDoc(std::vector<char> &htmlDoc)
     }
 }
 
-void Tab::Load(std::string url)
+void Tab::Load(std::string url, std::function<void(Tab *tab)> onLoad)
 {
     ResourceManager &resourceManager = ResourceManager::GetInstance();
     resourceManager.GetResourceAsync(url, [&](std::string url, std::vector<char> &data)
-                                     { this->LoadDoc(data); });
+                                     {
+                                         this->LoadDoc(data);
+                                         if (this->Initialized())
+                                         {
+                                             onLoad(this);
+                                         }
+                                     });
 }
 
 Tab::Tab() : m_Initialized(false)
